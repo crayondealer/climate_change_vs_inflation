@@ -1,0 +1,362 @@
+---
+title: "Global climate change and contributing factors"
+author: "Merwa Tariq"
+format: html
+server: shiny
+editor_options: 
+  chunk_output_type: inline
+output:
+  html_document:
+    runtime: shiny
+---
+
+## Shiny Documents
+
+This Quarto document is made interactive using Shiny. Interactive documents allow readers to modify parameters and see the results immediately. Learn more about Shiny interactive documents at <https://quarto.org/docs/interactive/shiny/>.
+
+## Inputs and Outputs
+
+You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change. This demonstrates how a standard R plot can be made interactive:
+
+```{r}
+library(shiny)
+library(tidyverse)
+library(dplyr)
+library(maps)
+library(ggrepel)
+library(readxl)
+library(scales)
+library(shiny)
+```
+
+
+```{r}
+world <- map_data("world")
+```
+
+
+
+
+## ################# TEMPERATURE ################# ##
+
+
+```{r}
+temperature <- read_csv('data/wide_format_annual_surface_temp.csv', show_col_types=FALSE) |>
+  mutate(Country = case_when(
+    Country=="Afghanistan, Islamic Rep. of" ~ "Afghanistan",
+    Country=="Andorra, Principality of" ~ "Andorra",
+    Country=="Bahamas, The" ~ "Bahamas",
+    Country=="Antigua and Barbuda" ~ "Antigua",
+    Country=="Antigua and Barbuda" ~ "Barbuda",
+    Country=="Bahrain, Kingdom of" ~ "Bahrain",
+    Country=="Brunei Darussalam" ~ "Brunei",
+    Country=="Cabo Verde" ~ "Cape Verde",
+    Country=="China, P.R.: Hong Kong" ~ "China",
+    Country=="China, P.R.: Macao" ~ "China",
+    Country=="China, P.R.: Mainland" ~ "China",
+    Country=="Congo, Rep. of" ~ "Republic of Congo",
+    Country=="Congo, Dem. Rep. of the" ~ "Democratic Republic of the Congo",
+    Country=="Dominican Rep." ~ "Dominican Republic",
+    Country=="Egypt, Arab Rep. of" ~ "Egypt",
+  	Country=="Equatorial Guinea, Rep. of" ~ "Equatorial Guinea",
+  	Country=="Eswatini, Kingdom of" ~ "Swaziland",
+  	Country=="Fiji, Rep. of" ~ "Fiji",
+  	Country=="Gambia, The" ~ "Gambia",
+  	Country=="Iran, Islamic Rep. of" ~ "Iran",
+  	Country=="Korea, Dem. People's Rep. of" ~ "North Korea",
+  	Country=="Korea, Rep. of" ~ "South Korea",
+  	Country=="Lao People's Dem. Rep." ~ "Laos",
+  	Country=="Lesotho, Kingdom of" ~ "Lesotho",
+  	Country=="Madagascar, Rep. of" ~ "Madagascar",
+  	Country=="Mauritania, Islamic Rep. of" ~ "Mauritania",
+  	Country=="Mozambique, Rep. of" ~ "Mozambique",
+  	Country=="Netherlands, The" ~ "Netherlands",
+  	Country=="Poland, Rep. of" ~ "Poland",
+  	Country=="San Marino, Rep. of" ~ "San Marino",
+  	Country=="St. Kitts and Nevis" ~ "Saint Kitts",
+  	Country=="St. Kitts and Nevis" ~ "Nevis",
+  	Country=="St. Lucia" ~ "Saint Lucia",
+  	Country=="St. Vincent and the Grenadines" ~ "Saint Vincent",
+  	Country=="St. Vincent and the Grenadines" ~ "Saint Grenadines",
+  	Country=="Syrian Arab Rep." ~ "Syria",
+  	Country=="São Tomé and Príncipe, Dem. Rep. of" ~ "Sao Tome and Principe",
+  	Country=="Taiwan Province of China" ~ "Taiwan",
+  	Country=="Tanzania, United Rep. of" ~ "Tanzania",
+  	Country=="Trinidad and Tobago" ~ "Tobago",
+  	Country=="Trinidad and Tobago" ~ "Trinidad",
+  	Country=="Venezuela, Rep. Bolivariana de" ~ "Venezuela",
+    Country=="Wallis and Futuna Islands" ~ "Wallis and Futuna",
+    Country=="West Bank and Gaza" ~ "Palestine",
+    Country=="United Kingdom" ~ "UK",
+    Country=="United States" ~ "USA",
+    .default = Country))
+#181 x 64
+```
+
+
+
+```{r}
+temperature|>
+  pivot_longer(cols = starts_with("F"), names_to = "Year", names_prefix = "F", values_to = "temp_change") |>
+  ggplot() +
+  aes(x=Year, y=temp_change, colour=Country, group=Country ) +
+  geom_line() +
+  labs(x='Year',
+       y='Temperature Change in *C',
+       title = "Temperature change across countries over the years" ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5), 
+        legend.position = "none") +
+  scale_x_discrete(breaks = seq(1965, 2020, by = 5), expand = c(0, NA))
+```
+
+
+
+```{r}
+latest_temp_change <- temperature %>%
+  pivot_longer(cols = starts_with("F"), names_to = "Year", names_prefix = "F", values_to = "temp_change") |>
+  group_by(Country) %>%
+  do(model = lm(temp_change ~ as.numeric(Year), data = .)) %>%
+  summarise(
+    Country = first(Country),
+    intercept = coef(model)[1],
+    slope = coef(model)[2]
+  ) |>
+  mutate(temp_change = slope*(2022)+intercept) |>
+  select(Country, temp_change)
+```
+
+```{r}
+inner_join(latest_temp_change, world, join_by(Country==region)) |>
+  ggplot() +
+  aes(x=long, y=lat, group=group) + 
+  coord_fixed(1.3) +
+  geom_polygon(aes(fill = temp_change)) +
+  theme_minimal() +
+  scale_fill_gradient(low = "yellow", high = "red") + 
+  labs(title = "Global temperature change") +
+  theme(axis.title=element_blank(), 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "bottom",
+        panel.grid = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+```
+#what we want to show and not what we did^
+#summarise by continent
+
+#label in maps
+#caption include whats not that obvious
+
+```{block, opts.label="RW"}
+temperature|>
+  pivot_longer(cols = starts_with("F"), names_to = "Year", names_prefix = "F", values_to = "temp_change") |>
+  select (Year) |>
+  group_by(Year) |>
+  count() |>
+  print(n=75)
+```
+
+```{block, opts.label="RW"}
+#for data cleaning
+anti_join(world, temperature, 
+          join_by(region==Country)) |>
+  select(region) |>
+  arrange(region) |>
+  unique()
+```
+
+```{block, opts.label="RW"}
+#for data cleaning
+anti_join(temperature,world , 
+          join_by(Country==region)) |>
+  select(Country) |>
+  arrange(Country) |>
+  unique() |>
+  print(n=50)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## ################# CO2 EMISSION ################# ##
+
+
+```{r}
+co2_emission <- read_csv('data/CO2 emission by countries.csv', show_col_types=FALSE) 
+
+highlights <- c("USA", "China", "Russia", "Germany", "UK", "Japan")
+
+co2_emission <- co2_emission |>
+  mutate(Country = case_when(
+    Country=="Congo" ~ "Republic of Congo",
+    Country=="Cote d'Ivoire" ~ "Ivory Coast",
+    Country=="Czechia" ~ "Czech Republic",
+    Country=="Democratic Republic of Congo" ~ "Democratic Republic of the Congo",
+    Country=="Eswatini" ~ "Swaziland",
+    Country=="Faeroe Islands" ~ "Faroe Islands",
+    Country=="Sint Maarten (Dutch part)" ~ "Sint Maarten",
+    Country=="Timor" ~ "Timor-Leste",
+    Country=="United Kingdom" ~ "UK",
+    Country=="United States" ~ "USA",
+    .default = Country),
+    group = if_else(Country %in% highlights, Country, "Other"),
+    group = as.factor(group)
+  ) |> 
+  mutate(
+    `CO2 emission (Tons)` = round(`CO2 emission (Tons)`/10**9),
+    group = fct_relevel(group, "Other", after = Inf)
+  ) |>
+  ungroup()
+#59,620 x 9
+```
+
+
+```{r}
+co2_emission |>
+  filter(Year>1960 & Year<2022,
+         group!="Other") |>
+  ggplot() +
+  aes(x=Year, y=`CO2 emission (Tons)`, group=Country ) +
+  geom_line(data = co2_emission |> filter(Year>1960 & Year<2022, group == "Other"),
+            color = "grey75",
+            alpha = .5) +
+  geom_line(aes(colour=group), linewidth=1) +
+  labs(x='Year',
+       y='CO2 Emission in Billion Tons',
+       title = "CO2 Emission by each country",
+       colour="Country") +
+  scale_x_continuous(breaks = seq(1965, 2020, by = 5), expand = c(0, NA)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+
+
+```{block, opts.label="total CO2 emission by year"}
+co2_emission |>
+  filter(Year>1960 & Year<2023) |>
+  group_by(Year) |>
+  summarise(sum=sum(`CO2 emission (Tons)`)) |> 
+  ggplot() +
+  aes(x=Year, y=sum) +
+  geom_line() +
+  labs(x='Year',
+       y='CO2 Emission in Billion Tons',
+       title = "Global CO2 Emission" ) +
+  scale_x_continuous(breaks = seq(1965, 2020, by = 5), expand = c(0, NA)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+co2_emission |>
+  filter(Year>=2011) |>
+  mutate(Country = if_else(Country %in% c("USA", "China", "Russia", "Germany", "UK", "Japan"), Country, "Other")) |>
+  group_by(Country) |>
+  summarise(total_emission=sum(`CO2 emission (Tons)`)) |>
+  arrange(total_emission) |>
+  ggplot() +
+  aes(x = "", y = total_emission, fill = factor(Country, levels = as.character(Country))) +
+  geom_bar(stat = "identity", linewidth=1.5, color = "white") +
+  coord_polar(theta = "y") +
+  scale_fill_brewer(palette = "Oranges") +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  theme_minimal() + 
+  labs(title = "CO2 Emission Share in the last decade") +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text.x=element_blank(),
+        panel.border = element_blank(),
+        panel.grid=element_blank(),
+        legend.position="none",
+        plot.title = element_text(hjust = 0.5)) +
+  geom_text(aes(label = paste0(Country, '\n',percent(round(total_emission/sum(total_emission),2))),
+                x=1.6), 
+            size=4,
+            position = position_stack(vjust = 0.5))
+#https://r-graph-gallery.com/circle-packing.html
+```
+
+
+```{r}
+co2_reasons <- read_excel('data/global_co2_reasons.xlsx',
+                          sheet=3,
+                          skip=6) 
+```
+
+```{r}
+co2_reasons |>
+  filter(Year>1961) |>
+  select(Year, Coal, Oil, Gas, `Cement emission`, Flaring, Other) |>
+  pivot_longer(!"Year", names_to = "reasons", values_to = "emission") |>
+  ggplot()+
+  aes(x=Year, y=emission, fill=factor(reasons)) + 
+  geom_area(alpha=0.75 , linewidth=1, colour="white") +
+  theme_minimal() + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(fill="Reasons",
+       y="CO2 Emission",
+       title="Major reasons for Carbon Emission") +
+  scale_x_continuous(breaks = seq(1960, 2020, by = 5), expand = c(0, NA))
+  
+```
+#put labeling inside and imrprove all labels/subscripts
+#second plot with reasons by country...
+#consistency with colours- same colours across countries
+
+
+```{block, opts.label="RW"}
+co2_emission |>
+  select(Country, `CO2 emission (Tons)`, Year) |>
+  filter(Year==2020) |>
+  arrange(desc(`CO2 emission (Tons)`))
+```
+
+
+
+
+#two more charts contaning info? not exploratory
+
+
+
+```{block, opts.label="Notes"}
+#noteworthy countries: USA, Germany, China, South Africa, Australia, ; UK,France,Russia, Japan, India, Canada
+#total comission over the years?
+#filter countries 
+
+
+
+
+#countries for comparison (each continent for representation), removing missing values consistently, focus on few
+#US- CO2 emission
+#echo false
+#line only for numerical data or time data not categorial
+#swarm plot v good, boxplot nice but not as nice, violin plot=density plus boxplot.
+#point plot gives standard error
+#truncating/cutting off yaxis is an option for points but not bar chart.
+#divergind co palettes for correlation between two entities?
+#not recommended to use interactive java script to display visualisations? D3
+#find visualisations that tell a story...
+#why look at individual data points in plotly feature? it doesnt give any new insight?
+#the map visual plot - not that good cos we have to zoom in to analyse properly...
+```
+
+
+
+
