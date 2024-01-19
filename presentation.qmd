@@ -1,0 +1,91 @@
+---
+title: "Climate Change"
+author: "Merwa Tariq"
+format: 
+  revealjs:
+    slide-number: c/t
+    width: 1600
+    height: 900
+    logo: "https://www.rstudio.com/wp-content/uploads/2018/10/RStudio-Logo-Flat.png"
+    css: ["theme/theme.css"]
+    theme: simple
+    echo: true
+editor: visual
+---
+
+# Data
+
+::: columns
+::: {.column width="60%"}
+::: {.callout-important appearance="minimal"}
+**Dataset 1:**  Temperature Change across countries
+
+**Source:** FAOSTAT via Kaggle 
+
+**Description:** For each country, temperature difference has been computed.
+:::
+:::
+:::
+
+::: columns
+::: {.column width="60%"}
+::: {.callout-important appearance="minimal"}
+**Dataset 2:** Greenhouse Gas Emissions + Forest Area
+
+**Source:** World Bank
+
+**Description:** The data-set comprises of different statistics across countries:\
+- Total Greenhouse gas emissions\
+- Greenhouse gas emission types\
+- Greenhouse gas emission causes\
+- Forest Area
+:::
+:::
+:::
+
+. . .
+
+# Objective
+
+\
+\
+This presentation aims to find the causes of global temperature change.
+
+. . .
+
+# Visualisations
+
+. . .
+
+# Global Trend on Temperature Change
+
+![](img/img1.png){fig-align="center"}
+
+. . .
+
+# Temperature Change across the globe
+
+![](img/img2.png){fig-align="center"}
+
+. . .
+
+# Factors leading to climate change
+
+Two main leading factors of global warming are Deforestation and Greenhouse gas(GHG) emissions
+
+![](img/img3.png){fig-align="center" width="400"}
+
+. . .
+
+# GHG emissions across countries
+
+![](img/img4.png){fig-align="left" width="800"}![](img/img5.png){fig-align="right" width="800"}
+
+
+. . .
+
+# Contributing factors to GHG emissions
+
+![](img/img6.png){fig-align="center" width="1200"}
+
+. . .
