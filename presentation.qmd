@@ -84,8 +84,14 @@ Two main leading factors of global warming are Deforestation and Greenhouse gas(
 
 . . .
 
+# Major sectors emitting GHG 
+
+![](img/img7.png){fig-align="center"}
+
+. . .
+
 # Contributing factors to GHG emissions
 
-![](img/img6.png){fig-align="center" width="1200"}
+![](img/img6.png){fig-align="center" width="1350"}
 
 . . .

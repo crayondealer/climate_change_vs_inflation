@@ -33,6 +33,109 @@ world <- map_data("world")
 
 
 
+```{r}
+inflation <- read_delim('kachra_data/world_bank_consumer_price_index.csv', 
+                        show_col_types=FALSE,
+                        skip=3) |>
+  select(`Country Name`, `Country Code`, starts_with('19')) 
+#266x42 records
+inflation <- inflation |>
+  rowwise() |>
+  mutate(count = sum(!is.na(c_across(starts_with("19"))))) |>
+  arrange(count) |>
+  filter(count >= 20) 
+#118x42 records
+```
+
+```{r}
+#finding which countries to remove- less than 25 data points.
+inflation |>
+  select(`Country Name`, count) |>
+  ggplot() +
+  aes(x=count) +
+  geom_histogram(bins=7) +
+  theme_minimal() +
+  labs(x="Number of records",
+       title="Number of records present for Countries") +
+  theme(axis.title.y = element_blank())
+```
+
+```{r}
+inflation <- inflation |>
+  mutate(`Country Name` = case_when(
+    `Country Name`=="Bahamas, The" ~ "Bahamas",
+    `Country Name`=="Congo, Dem. Rep." ~ "Democratic Republic of the Congo",
+    `Country Name`=="Cote d'Ivoire" ~ "Ivory Coast",
+    `Country Name`=="Egypt, Arab Rep." ~ "Egypt",
+    `Country Name`=="Eswatini" ~ "Swaziland",
+    `Country Name`=="Gambia, The" ~ "Gambia",
+    `Country Name`=="Iran, Islamic Rep." ~ "Iran",
+    `Country Name`=="Korea, Rep." ~ "South Korea",
+    `Country Name`=="Syrian Arab Republic" ~ "Syria",
+    `Country Name`=="Turkiye" ~ "Turkey",
+    `Country Name`=="United Kingdom" ~ "UK",
+    `Country Name`=="United States" ~ "USA",
+    .default = `Country Name`
+  ))
+```
+
+```{r}
+#for data cleaning
+anti_join(world, inflation, 
+          join_by(region==`Country Name`)) |>
+  select(region) |>
+  arrange(region) |>
+  unique()
+```
+
+```{r}
+anti_join(inflation, world,
+          join_by(`Country Name`==region)) |>
+  select(`Country Name`) |>
+  arrange(`Country Name`) |>
+  unique() |>
+  print(n=36)
+```
+
+```{r}
+inflation <- inner_join(inflation, world, join_by(`Country Name`==region))
+```
+
+```{r}
+inflation_long <- inflation |>
+  pivot_longer(cols = starts_with("19"), names_to = "Year", values_to = "cp") |>
+  filter(cp<1000)
+#1.928.800 values vs 1.846.383
+```
+
+```{r}
+inflation |>
+  select(`Country Name`) |>
+  unique() |>
+  arrange(`Country Name`) |>
+  print(n=120)
+```
+
+```{r}
+inflation_long |>
+  filter(`Country Name` %in% c("Germany", "China", "USA", "South Africa", "Australia")) |>
+  ggplot() +
+  aes(x=Year, y=cp, colour=`Country Name`, group=`Country Name` ) +
+  geom_line() +
+  labs(x='Year',
+       y='Inflation',
+       title = "" ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5), 
+        legend.position = "bottom") +
+  scale_x_discrete(breaks = seq(1965, 2020, by = 5), expand = c(0, NA)) + 
+  scale_color_manual(values = c("Germany"="Yellow", "China"="Red", "USA"="Blue", "South Africa"="Green", "Australia"="Orange"))
+#highlight 3-4 important/relevant countries and turn rest grey
+```
+#removed because it doesnt seem to be increasing over the years which temperature definitely is...
+
+
+
 
 #temperature data cleaning and exploration
 
@@ -65,7 +168,7 @@ anti_join(temperature,world ,
 
 
 ```{r}
-temperature <- temperature |>
+temperature_new <- temperature |>
   mutate(Area = case_when(
   	Area=="Bolivia (Plurinational State of)" ~ "Bolivia",
   	Area=="Brunei Darussalam" ~ "Brunei",
@@ -75,7 +178,7 @@ temperature <- temperature |>
   	Area=="China, Taiwan Province of" ~ "Taiwan",
     Area=="China, mainland" ~ "NA",
     Area=="Cocos (Keeling) Islands" ~ "Cocos Islands",
-  	Area=="Congo" ~ "Republic of the Congo",
+  	Area=="Congo" ~ "Republic of Congo",
   	Area=="Czechia" ~ "Czech Republic",
   	Area=="Democratic People's Republic of Korea" ~ "North Korea",
   	Area=="Eswatini" ~ "Swaziland",
@@ -135,7 +238,7 @@ temperature_new|>
 
 
 ```{r}
-rep_2 <- temperature |>
+rep_2 <- temperature_new |>
   filter(Area %in% c("Antigua and Barbuda", "Belgium-Luxembourg", "Czechoslovakia","Saint Kitts and Nevis", "Saint Vincent and the Grenadines", "Serbia and Montenegro", "South Georgia and the South Sandwich Islands", "Sudan (former)", "Trinidad and Tobago"))
 
 temperature_new <- rbind(rep_2 |> 
@@ -164,7 +267,7 @@ temperature_new <- rbind(rep_2 |>
         	Area=="Sudan (former)" & Year<2011 ~ "Sudan",
           TRUE ~ Area)
       ),
-      temperature |>
+      temperature_new |>
         filter(!Area %in% c("Antigua and Barbuda", "Belgium-Luxembourg", "Czechoslovakia","Saint Kitts and Nevis", "Saint Vincent and the Grenadines", "Serbia and Montenegro" ,"South Georgia and the South Sandwich Islands", "Sudan (former)", "Trinidad and Tobago"))
 )
 ```
@@ -331,14 +434,14 @@ temperature_new <- rbind(rep_Yugoslav |>
 
 
 ```{r}
-temperature <- temperature_new
-rm(temperature_new)
+temperature_new
+write.csv(temperature_new, 'data/temperature.csv', row.names = FALSE)
 ```
 
 
 #temperature change trend
 ```{r}
-temperature|>
+temperature_new|>
   ggplot() +
   aes(x=Year, y=Value, colour=Area, group=Area ) +
   geom_line() +
@@ -353,7 +456,8 @@ temperature|>
 
 
 ```{r}
-latest_temp_change <- temperature |>
+latest_temp_change <- temperature_new |>
+  filter(Year>2010) |>
   drop_na(Value, Year) |>
   group_by(Area) |>
   do(model = lm(Value ~ as.numeric(Year), data = .)) |>
@@ -362,7 +466,7 @@ latest_temp_change <- temperature |>
     intercept = coef(model)[1],
     slope = coef(model)[2]
   ) |>
-  mutate(temp_change = slope*(2022)+intercept) |>
+  mutate(temp_change = slope*(2020)+intercept) |>
   select(Country, temp_change)
 ```
 
@@ -385,7 +489,12 @@ inner_join(latest_temp_change, world, join_by(Country==region)) |>
         panel.grid = element_blank(),
         plot.title = element_text(hjust = 0.5))
 ```
-
+```{r}
+#temperature change by country
+latest_temp_change |>
+  arrange(desc(temp_change)) |>
+  print(n=25)
+```
 
 
 
@@ -454,7 +563,7 @@ co2_emission <- co2_emission |>
 #to view overall trend
 ```{r}
 co2_emission |>
-  filter(Year>1960 & Year<2023) |>
+  filter( Year<2023) |>
   group_by(Year) |>
   summarise(sum=sum(`CO2 emission (Tons)`)) |> 
   ggplot() +
@@ -463,7 +572,6 @@ co2_emission |>
   labs(x='Year',
        y='CO2 Emission in Billion Tons',
        title = "Global CO2 Emission" ) +
-  scale_x_continuous(breaks = seq(1965, 2020, by = 5), expand = c(0, NA)) +
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5))
 ```
@@ -481,7 +589,10 @@ co2_emission |>
 
 ```{r}
 highlights <- c("USA", "China", "Russia", "Germany", "UK", "Japan")
+```
 
+
+```{r}
 co2_emission <- co2_emission |>
   mutate(group = if_else(Country %in% highlights, Country, "Other"),
     group = as.factor(group)
@@ -552,7 +663,7 @@ co2_emission |>
 
 
 ```{r}
-co2_reasons <- read_excel('data/global_co2_reasons.xlsx',
+co2_reasons <- read_excel('kachra_data/global_co2_reasons.xlsx',
                           sheet=3,
                           skip=6) 
 ```
@@ -577,3 +688,336 @@ co2_reasons |>
 ```
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#co2 emission data cleaning and exploration
+
+
+```{r}
+ghg <- read_csv('data/wdi_ghg2.csv', show_col_types=FALSE) |>
+  mutate(`Country Name` = case_when(
+    `Country Name`=="Bahamas, The" ~ "Bahamas",
+    `Country Name`=="Brunei Darussalam" ~ "Brunei",
+    `Country Name`=="Cabo Verde" ~ "Cape Verde",
+    `Country Name`=="Congo, Dem. Rep." ~ "Democratic Republic of the Congo",
+    `Country Name`=="Congo, Rep." ~ "Republic of Congo",
+    `Country Name`=="Cote d'Ivoire" ~ "Ivory Coast",
+    `Country Name`=="Czechia" ~ "Czech Republic",
+    `Country Name`=="Egypt, Arab Rep." ~ "Egypt",
+    `Country Name`=="Czechia" ~ "CzechRepublic",
+    `Country Name`=="Eswatini" ~ "Swaziland",
+    `Country Name`=="Gambia, The" ~ "Gambia",
+    `Country Name`=="Hong Kong SAR, China" ~ "Hong Kong",
+    `Country Name`=="Iran, Islamic Rep." ~ "Iran",
+    `Country Name`=="Korea, Dem. People's Rep." ~ "North Korea",
+    `Country Name`=="Korea, Rep." ~ "South Korea",
+    `Country Name`=="Kyrgyz Republic" ~ "Kyrgyzstan",
+    `Country Name`=="Lao PDR" ~ "Laos",
+    `Country Name`=="Macao SAR, China" ~ "Macao",
+    `Country Name`=="Micronesia, Fed. Sts." ~ "Micronesia",
+    `Country Name`=="Russian Federation" ~ "Russia",
+    `Country Name`=="Sint Maarten (Dutch part)" ~ "Sint Maarten",
+    `Country Name`=="Slovak Republic" ~ "Slovakia",
+    `Country Name`=="St. Lucia" ~ "Saint Lucia",
+    `Country Name`=="St. Martin (French part)" ~ "Saint Martin",
+    `Country Name`=="Syrian Arab Republic" ~ "Syria",
+    `Country Name`=="Turkiye" ~ "Turkey",
+    `Country Name`=="United Kingdom" ~ "UK",
+    `Country Name`=="United States" ~ "USA",
+    `Country Name`=="Venezuela, RB" ~ "Venezuela",
+    `Country Name`=="Viet Nam" ~ "Vietnam",
+    `Country Name`=="West Bank and Gaza" ~ "Palestine",
+    `Country Name`=="Yemen, Rep." ~ "Yemen",
+    TRUE ~ `Country Name`)) 
+
+rep_2 <- ghg |>
+  filter(`Country Name` %in% c("Antigua and Barbuda", "Saint Kitts and Nevis", "Saint Vincent and the Grenadines", "Trinidad and Tobago"))
+
+ghg <- rbind(rep_2 |> 
+        mutate(`Country Name` = case_when(
+          `Country Name`=="Antigua and Barbuda" ~ "Antigua",
+        	`Country Name`=="Saint Kitts and Nevis" ~ "Saint Kitts",
+          `Country Name`=="Saint Vincent and the Grenadines" ~ "Saint Vincent",
+        	`Country Name`=="Trinidad and Tobago" ~ "Trinidad",
+          TRUE ~ `Country Name`)
+      ), 
+      rep_2 |> 
+        mutate(`Country Name` = case_when(
+          `Country Name`=="Antigua and Barbuda" ~ "Barbuda",
+        	`Country Name`=="Saint Kitts and Nevis" ~ "Nevis",
+          `Country Name`=="Saint Vincent and the Grenadines" ~ "Grenadines",
+        	`Country Name`=="Trinidad and Tobago" ~ "Tobago",
+          TRUE ~ `Country Name`)
+      ),
+      ghg |>
+        filter(!`Country Name` %in% c("Antigua and Barbuda", "Saint Kitts and Nevis", "Saint Vincent and the Grenadines", "Trinidad and Tobago", 'Africa Eastern and Southern', 'Africa Western and Central', 'Arab World', 'Caribbean small states', 'Central Europe and the Baltics', 'Early-demographic dividend', 'East Asia & Pacific', 'East Asia & Pacific (excluding high income)', 'East Asia & Pacific (IDA & IBRD countries)', 'Euro area', 'Europe & Central Asia', 'Europe & Central Asia (excluding high income)', 'Europe & Central Asia (IDA & IBRD countries)', 'Fragile and conflict affected situations', 'Heavily indebted poor countries (HIPC)', 'IBRD only', 'IDA & IBRD total', 'IDA blend', 'IDA only', 'IDA total', 'Late-demographic dividend', 'Latin America & Caribbean', 'Latin America & Caribbean (excluding high income)', 'Latin America & the Caribbean (IDA & IBRD countries)', 'Least developed countries: UN classification', 'Low & middle income', 'Middle East & North Africa', 'Middle East & North Africa (excluding high income)', 'Middle East & North Africa (IDA & IBRD countries)', 'North America', 'Not classified', 'OECD members', 'Other small states', 'Pacific island small states', 'Post-demographic dividend', 'Pre-demographic dividend', 'Small states', 'South Asia', 'South Asia (IDA & IBRD)', 'Sub-Saharan Africa', 'Sub-Saharan Africa (excluding high income)', 'Sub-Saharan Africa (IDA & IBRD countries)'))
+)
+
+highlights = c("USA", "China", "European Union", "Russia", "Japan", "India")
+
+ghg_long <- ghg |>
+  pivot_longer(cols = ends_with("]"), names_to = "Year", values_to = "Value") |>
+  filter(Year>=1992 & Year<=2020) |>
+  drop_na(Value) |>
+  mutate(Year = as.numeric(sub("\\s*\\[.*\\]", "", Year)),
+         Value = case_when(
+           Value == ".." ~ NA_real_,
+           TRUE ~ as.numeric(Value)/10**6),
+         group = if_else(`Country Name` %in% highlights, `Country Name`, "Other"),
+         group = as.factor(group)) |>
+  mutate(group = fct_relevel(group, "Other", after = Inf)
+  ) |>
+  select(`Series Name`, `Country Name`, Year, Value, group) |>
+  rename(Series=`Series Name`, Country=`Country Name`) |>
+  ungroup() 
+```
+
+
+```{r}
+#for data cleaning
+anti_join(world, ghg, 
+          join_by(region==`Country Name`)) |>
+  select(region) |>
+  arrange(region) |>
+  unique()
+
+anti_join(ghg, world,
+          join_by(`Country Name`==region)) |>
+  select(`Country Name`) |>
+  arrange(`Country Name`) |>
+  unique() |>
+  print(n=90)
+```
+
+
+#to view overall trend
+```{r}
+ghg_types_long <- ghg_long |>
+  filter(Series %in% c('CO2 emissions (kt)', 'Methane emissions (kt of CO2 equivalent)', 'Nitrous oxide emissions (thousand metric tons of CO2 equivalent)', 'Other greenhouse gas emissions, HFC, PFC and SF6 (thousand metric tons of CO2 equivalent)') & Country %in% "World") 
+
+forest_long <- ghg_long |>
+  filter(Series=="Forest area (sq. km)" & Country=="World")
+
+ghg_types_long |>
+  ggplot() +
+  aes(x = Year) +
+  geom_area(aes(y = Value, fill = factor(Series)), alpha=0.75 , linewidth=1, colour="white") +
+  geom_line(data=forest_long, 
+            aes(x=as.numeric(Year), y = Value),
+            linewidth=1, colour="forestgreen", linetype="dashed") +
+  labs(x = 'Year', 
+       title = "Causes for Global Warming",
+       caption = "*Forest Area (per 1000 square km) VS Greenhouse gas emissions (Billion Tonnes of CO2 equivalent)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle=element_text(size=9),
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.grid.minor = element_blank(),
+  ) +
+  scale_x_continuous(breaks = seq(1990, 2020, by = 5), expand = c(0, NA)) +
+  scale_y_continuous(breaks = seq(0, 50, by = 10), limits = c(-2, 50), expand = c(0, NA)) +
+  scale_color_manual(labels=c('CO2 emissions', 'Methane emissions', 'Nitrous oxide emissions', 'Other greenhouse gas emissions'),
+                     values=c("lightskyblue1", "steelblue3", "steelblue4", "black"))+
+  scale_fill_manual(labels=c('CO2 emissions', 'Methane emissions', 'Nitrous oxide emissions', 'Other greenhouse gas emissions'),
+                    values=c("lightskyblue1", "steelblue3", "steelblue4", "black"))
+```
+
+
+
+
+#to find important countries
+```{r}
+ghg_long |>
+  filter(Series=='CO2 emissions (kt)') |>
+  drop_na(Value) |>
+  filter(Year==2020) |>
+  arrange(desc(Value)) |>
+  print(n=40)
+
+##noteworthy countries: USA, China, European Union, Russia, Japan, India
+```
+
+
+
+```{r}
+ghg_long |>
+  filter(Series=="Total greenhouse gas emissions (kt of CO2 equivalent)" & group != "Other" & !Country %in% c("World", 'Low income', 'Lower middle income', 'Middle income', 'Upper middle income', 'High income')) |>
+  ggplot() +
+  aes(x=Year, y=Value, group=Country ) +
+  geom_line(data = ghg_long |> filter(Series=="Total greenhouse gas emissions (kt of CO2 equivalent)" & group == "Other" & !Country %in% c("World", 'Low income', 'Lower middle income', 'Middle income', 'Upper middle income', 'High income')),
+            color = "grey75",
+            alpha = .5) +
+  geom_line(aes(colour=group), linewidth=1) +
+  labs(x='Year',
+       y='CO2 Emission in Billion Tons',
+       title = "Greenhouse gas emissions by each country",
+       caption = "*Greenhouse gas emissions in billion tonnes") +
+  scale_x_continuous(breaks = seq(1990, 2020, by = 5), expand = c(0, NA)) +
+  scale_y_continuous(breaks = seq(0, 15, by = 2), limits=c(0,15), expand = c(0, NA)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "bottom",
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank()) +
+  scale_color_manual(values=c("red3", "aquamarine3", "gold3", "mediumpurple3", "steelblue3", "darkorange3"))+
+  scale_fill_manual(values=c("red3", "aquamarine3", "gold3", "mediumpurple3", "steelblue3", "darkorange3"))
+```
+
+
+
+```{r}
+ghg_long |>
+  filter(Series=="Total greenhouse gas emissions (kt of CO2 equivalent)" & Year>=2010 & !Country %in% c("World", 'Low income', 'Lower middle income', 'Middle income', 'Upper middle income', 'High income')) |>
+  drop_na(Value) |>
+  group_by(group) |>
+  summarise(total_emission=sum(Value)) |>
+  arrange(total_emission) |>
+  ggplot() +
+  aes(x = "", y = total_emission, fill = factor(group, levels = as.character(group))) +
+  geom_bar(stat = "identity", linewidth=1.5, color = "white") +
+  coord_polar(theta = "y", start=pi, direction = -1) +
+  scale_fill_manual(values = c("mediumpurple3", "steelblue3", "aquamarine3", "gold3", "darkorange3", "red3", "grey")) +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  theme_minimal() + 
+  labs(title = "Greenhouse gas emissions share in the last decade") +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text.x=element_blank(),
+        panel.border = element_blank(),
+        panel.grid=element_blank(),
+        legend.position="none",
+        plot.title = element_text(hjust = 0.5)) +
+  geom_text(aes(label = paste0(group, '\n',percent(round(total_emission/sum(total_emission),2))),
+                x=1.6), 
+            size=4,
+            position = position_stack(vjust = 0.5))
+```
+
+
+
+```{r}
+ghg_long |>
+  filter(Series %in% c("CO2 emissions from residential buildings and commercial and public services (% of total fuel combustion)", "CO2 emissions from other sectors, excluding residential buildings and commercial and public services (% of total fuel combustion)", "CO2 emissions from transport (% of total fuel combustion)", "CO2 emissions from manufacturing industries and construction (% of total fuel combustion)", "CO2 emissions from electricity and heat production, total (% of total fuel combustion)") & group!="Other") |>
+  mutate(Value=Value*10**6) |>
+  ggplot()+
+  aes(x=Year, y=Value, fill=factor(Series)) + 
+  geom_area(alpha=0.65 , linewidth=1, colour="white") +
+  facet_wrap(~ group, scales = 'free' ) +
+  theme_minimal() + 
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.spacing = unit(1, "lines")) +
+  labs(fill="Reasons",
+       y="CO2 Emission",
+       title="Major reasons for Carbon Emission")  +
+  scale_x_continuous(breaks = seq(1990, 2020, by = 10), limits = c(1990,2020), expand = c(0, NA)) +
+  scale_y_continuous(expand = c(0, NA)) +
+  scale_color_manual(labels=c('Residential, commercial and public services', 'Others', 'Transport', 'Manufacturing Industries and Construction', 'Electricity and Heat production'),
+                     values=c("honeydew2","olivedrab2","olivedrab3", "darkolivegreen4", "darkslategrey"))+
+  scale_fill_manual(labels=c('Residential, commercial & public services', 'Others', 'Transport', 'Manufacturing Industries & Construction', 'Electricity & Heat production'),
+                    values=c("honeydew2","olivedrab2","olivedrab3", "darkolivegreen4", "darkslategrey"))
+```
+
+
+```{r}
+ghg_long |>
+  filter(Series %in% c("CO2 emissions from gaseous fuel consumption (kt)", "CO2 emissions from liquid fuel consumption (kt)", "CO2 emissions from solid fuel consumption (kt)") & group!="Other") |>
+  ggplot() +
+  aes(x = Year, y = Value, color = factor(Series), shape = factor(Series)) + 
+  geom_line(size=1)  +
+  facet_wrap(~ group, scales = 'free') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.spacing = unit(1, "lines")
+  ) +
+  labs(
+    color = "Reasons",
+    shape = "Reasons",
+    y = "CO2 Emission",
+    title = "Major reasons for Carbon Emission"
+  )  +
+  scale_x_continuous(breaks = seq(1990, 2020, by = 10), limits = c(1990, 2016), expand = c(0, NA)) +
+  scale_y_continuous(breaks = seq(0, 8, by = 2), limits = c(0, 10), expand = c(0, NA)) +
+  scale_color_manual(
+    labels = c('Gaseous fuel', 'Liquid fuel', 'Solid fuel'),
+    values = c("peachpuff3", "salmon3", "salmon4")
+  ) +
+  scale_shape_manual(
+    labels = c('Gaseous fuel', 'Liquid fuel', 'Solid fuel'),
+    values = c(16, 17, 18)  # Adjust shape values as needed
+  )
+
+```
+
+
+
+```{r}
+
+ghg_total_long <- ghg_long |>
+  filter(Series=="CO2 emissions (metric tons per capita)" & Country!="World" & Year>=2010) |>
+  group_by(Country, group) |>
+  summarise(ghgpc = sum(Value))
+
+joined_dataset <- inner_join(latest_temp_change, ghg_total_long, by = c("Country" = "Country")) |>
+  mutate(temp_change = as.numeric(temp_change),
+         ghgpc = log(ghgpc*10**6)) |>
+  drop_na(temp_change, ghgpc) 
+```
+
+
+```{r}
+joined_dataset |>
+  filter(group=="Other") |>
+  ggplot() +
+  aes(x=ghgpc, y=temp_change, label=Country) +
+  geom_point()
+```
+
+```{r}
+cor(joined_dataset$ghgpc, joined_dataset$temp_change)
+rf.fit <- randomForest(temp_change ~ ., data = joined_dataset, ntree = 1000,
+                       keep.forest = FALSE, importance = TRUE)
+summary(rf.fit)
+```
