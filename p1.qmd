@@ -348,7 +348,7 @@ ghg_long |>
   arrange(desc(total_ghg)) |>
   ggplot() +
   aes(y = reorder(Country, total_ghg), x = total_ghg, fill = factor(Series)) + 
-  geom_bar(stat = "identity", position = "stack", color = "white", width=0.75) +
+  geom_bar(stat = "identity", position = "stack", color = "white", width=0.75, alpha=0.75) +
   theme_minimal() + 
   theme(
     plot.title = element_text(hjust = 0.5),
