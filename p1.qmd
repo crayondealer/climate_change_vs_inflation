@@ -55,7 +55,7 @@ temperature|>
         panel.grid.minor = element_blank(),
         panel.grid.major.x = element_blank(),
         axis.title.x = element_blank(),
-        plot.margin = unit(c(0, 0.5, 0, 0.5), "inches")) +
+        plot.margin = unit(c(0.1, 0.5, 0.1, 0.5), "inches")) +
   scale_x_continuous(breaks = seq(1960, 2020, by = 5), expand = c(0, NA))+
   scale_y_continuous(expand = c(0, 0))
 ```
@@ -82,7 +82,8 @@ latest_temp_change <- temperature |>
 highlight_labels <- data.frame (Country  = c("China", "India", "Japan", "Russia", "EU", "USA"),
                   long = c(100.5476,	78.514,	135.2924, 102.1668,	21.6206,	-100.6253),
                   lat = c(35.0824,	23.3934,	35.4739,	60.5448,	49.8382,	38.7433),
-                  group = c(435,838,886,1303,1387,1527)
+                  group = c(435,838,886,1303,1387,1527),
+                  values = c(1.7271455, 0.8458727, 1.2996909, 2.8336182,NA, 1.4973273)
                   )
 
 inner_join(latest_temp_change, world, join_by(Country==region)) |>
@@ -90,6 +91,9 @@ inner_join(latest_temp_change, world, join_by(Country==region)) |>
   aes(x=long, y=lat, group=group) + 
   coord_fixed(1.3) +
   geom_polygon(aes(fill = temp_change)) +
+  geom_mark_ellipse(data=highlight_labels, aes(fill = long, label = Country), 
+                    con.cap = unit(0, "mm"), con.size = 0.55,
+                    label.fontsize = 10.5, label.fill = NA, expand = unit(2.8, "mm")) +
   theme_minimal() +
   scale_fill_stepsn(breaks = seq(0.5, 3.5, by = 0.5),  
                     limits = c(0.5, 3.5), 
@@ -102,19 +106,17 @@ inner_join(latest_temp_change, world, join_by(Country==region)) |>
         axis.ticks = element_blank(),
         legend.title = element_blank(),
         legend.position = "bottom",
-        legend.key.width = unit(1.5, 'cm'),
-        legend.key.height = unit(0.5, 'cm'),
+        legend.key.width = unit(1.25, 'cm'),
+        legend.key.height = unit(0.4, 'cm'),
         panel.grid = element_blank(),
-        plot.title = element_text(hjust = 0.5)) +
-  geom_text(data = highlight_labels, 
-            aes(x = long, y = lat, label = Country),
-            position = position_nudge(x=-0.5),
-            color = "gray11",
-            size=4)
+        plot.title = element_text(hjust = 0.5)) 
 
-#summarise by continent
-#label important countries in maps
-#caption include whats not that obvious
+#+
+#  geom_text(data = highlight_labels, 
+#            aes(x = long, y = lat, label = Country),
+#            position = position_nudge(x=-0.5),
+#            color = "gray11",
+#            size=4)
 ```
 
 
@@ -235,13 +237,10 @@ ghg_types_long |>
   geom_line(data=forest_long, 
             aes(x=as.numeric(Year), y = Value),
             linewidth=1, colour="forestgreen", linetype="dashed") +
-  geom_label_repel(data=forest_long, 
-            aes(y = Value, label="y"),
-                  nudge_x = 1,
-                  na.rm = TRUE) +
+  geom_text(data = subset(forest_long, Year == "2019"), aes(label = "Forest Area", colour = Series, x = Inf, y = Value), vjust=1.5, hjust=1.1) +
   labs(y = 'Greenhouse gas emissions (Bt)', 
        title = "Causes for Global Warming",
-       caption = "*Greenhouse gas emissions (Billion Tonnes of CO2 equivalent)") +
+       caption = "*Greenhouse gas emissions are in Billion Tonnes of CO2 equivalent") +
   theme_minimal() +
   theme(
     plot.title = element_text(hjust = 0.5),
@@ -251,17 +250,59 @@ ghg_types_long |>
     axis.title.x = element_blank(),
     panel.grid.minor = element_blank(),
     panel.grid.major.x = element_blank(),
-    plot.margin = unit(c(0, 0.5, 0, 0.5), "inches")
+    plot.margin = unit(c(0.1, 0.5, 0.1, 0.5), "inches")
   ) +
   scale_x_continuous(breaks = seq(1990, 2020, by = 5), expand = c(0, NA)) +
   scale_y_continuous(breaks = seq(0, 50, by = 10), limits = c(-2, 50), expand = c(0, NA),
                      sec.axis = sec_axis( trans=~.*1, name="Forest Area (1000 square km)")) +
-  scale_color_manual(labels=c('CO2 emissions', 'Methane emissions', 'Nitrous oxide emissions', 'Other greenhouse gas emissions'),
-                     values=c("lightskyblue1", "steelblue3", "steelblue4", "black"))+
+  scale_color_manual(labels=c('Forest Area', 'CO2 emissions', 'Methane emissions', 'Nitrous oxide emissions', 'Other greenhouse gas emissions'),
+                     values=c("forestgreen", "lightskyblue1", "steelblue3", "steelblue4", "black"))+
   scale_fill_manual(labels=c('CO2 emissions', 'Methane emissions', 'Nitrous oxide emissions', 'Other greenhouse gas emissions'),
-                    values=c("lightskyblue1", "steelblue3", "steelblue4", "black"))
+                    values=c("lightskyblue1", "steelblue3", "steelblue4", "black")) +
+  guides(fill=guide_legend(nrow=2)) +
+  scale_colour_discrete(guide = 'none')  
 
 ```
+
+```{r}
+library(ggplot2)
+
+ghg_types_long |>
+  ggplot() +
+  aes(x = Year) +
+  geom_area(aes(y = Value, fill = factor(Series)), alpha = 0.7, linewidth = 1, colour = "white") +
+  labs(y = 'Greenhouse gas emissions (Bt)',
+       title = "Causes for Global Warming",
+       caption = "*Greenhouse gas emissions are in Billion Tonnes of CO2 equivalent") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(size = 9),
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    axis.title.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    plot.margin = unit(c(0.1, 0.5, 0.1, 0.5), "inches")
+  ) +
+  scale_x_continuous(breaks = seq(1990, 2020, by = 5), expand = c(0, NA)) +
+  scale_y_continuous(breaks = seq(0, 50, by = 10), limits = c(-2, 50), expand = c(0, NA),
+                     sec.axis = sec_axis(trans = ~ . * 1, name = "Forest Area (1000 square km)")) +
+  scale_color_manual(labels = c('CO2 emissions', 'Methane emissions', 'Nitrous oxide emissions', 'Other greenhouse gas emissions'),
+                     values = c("lightskyblue1", "steelblue3", "steelblue4", "black")) +
+  scale_fill_manual(labels = c('CO2 emissions', 'Methane emissions', 'Nitrous oxide emissions', 'Other greenhouse gas emissions'),
+                    values = c("lightskyblue1", "steelblue3", "steelblue4", "black")) +
+  guides(fill = guide_legend(nrow = 2)) +
+  geom_line(data = forest_long,
+            aes(x = as.numeric(Year), y = Value),
+            linewidth = 1, colour = "forestgreen", linetype = "dashed") +
+  geom_text(data = subset(forest_long, Year == max(Year)),
+            aes(label = "Forest Area", color = Series, x = Inf, y = Value),
+            vjust = 1.5, hjust = 1.1) +
+  scale_color_manual(labels = c("Forest Green"), values=c("forestgreen"), guide="none") 
+
+```
+
 
 #sketched country wise total ghg emissions. wanted to put label at the end of the line in line chart but it was messing up so resorted to put in legend
 ```{r}
@@ -338,7 +379,7 @@ ghg_long |>
         axis.title.y = element_blank(),
         panel.grid.minor = element_blank(),
         panel.grid.major.x = element_blank(),
-        plot.margin = unit(c(0, 0.5, 0, 0.5), "inches"),
+        plot.margin = unit(c(0.1, 0.5, 0.1, 0.5), "inches"),
         panel.spacing = unit(1, "lines")) +
   labs(title="Sector-wise: GHG Emission in Percentage")  +
   scale_x_continuous(breaks = seq(1990, 2020, by = 10), limits = c(1990,2020), expand = c(0, NA)) +
@@ -359,7 +400,7 @@ ghg_long |>
   arrange(desc(total_ghg)) |>
   ggplot() +
   aes(y = reorder(Country, total_ghg), x = total_ghg, fill = factor(Series)) + 
-  geom_bar(stat = "identity", position = "stack", color = "white", width=0.75, alpha=0.75, linewidth=1) +
+  geom_bar(stat = "identity", position = "stack", color = "white", width=0.7, alpha=0.75, linewidth=1) +
   theme_minimal() + 
   theme(
     plot.title = element_text(hjust = 0.5),
@@ -369,7 +410,7 @@ ghg_long |>
     panel.grid.minor = element_blank(),
     panel.grid.major.y = element_blank(),
     axis.text.y = element_text(size=11),
-    plot.margin = unit(c(0, 0.5, 0, 0.5), "inches")
+    plot.margin = unit(c(0.1, 0.5, 0.1, 0.5), "inches")
   ) +
   labs(x='GHG Emission (billion tonnes)',
     title = "Resources utilized in GHG Emissions",
