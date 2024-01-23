@@ -235,11 +235,7 @@ forest_long <- ghg_long |>
 ghg_types_long |>
   ggplot() +
   aes(x = Year) +
-  geom_area(aes(y = Value, fill = factor(Series)), alpha=0.75 , linewidth=1, colour="white") +
-  geom_line(data=forest_long, 
-            aes(x=as.numeric(Year), y = Value),
-            linewidth=1, colour="forestgreen", linetype="dashed") +
-  geom_text(data = subset(forest_long, Year == "2019"), aes(label = "Forest Area", colour = Series, x = Inf, y = Value), vjust=1.5, hjust=1.1) +
+  geom_area(aes(y = Value, fill = factor(Series)), alpha=0.75 , linewidth=1, colour="white")  +
   labs(y = 'Greenhouse gas emissions (Bt)', 
        title = "Causes for Global Warming",
        caption = "*Greenhouse gas emissions are in Billion Tonnes of CO2 equivalent") +
@@ -262,7 +258,11 @@ ghg_types_long |>
   scale_fill_manual(labels=c('CO2 emissions', 'Methane emissions', 'Nitrous oxide emissions', 'Other greenhouse gas emissions'),
                     values=c("lightskyblue1", "steelblue3", "steelblue4", "black")) +
   guides(fill=guide_legend(nrow=2)) +
-  scale_colour_discrete(guide = 'none')  
+  geom_line(data=forest_long, 
+            aes(x=as.numeric(Year), y = Value),
+            linewidth=1, colour="forestgreen", linetype="dashed") +
+  geom_text(data = subset(forest_long, Year == "2019"), aes(label = "Forest Area", colour = Series, x = Inf, y = Value), vjust=1.5, hjust=1.1) +
+  scale_color_manual(labels=c('Forest Area'), values=c("forestgreen"), guide="none") 
 
 ```
 
@@ -444,7 +444,7 @@ joined_dataset_byyear |>
   ggplot() +
   aes(x=ghg, y=temp_change) +
   geom_point(alpha=0.6, size=3, colour="orangered2") +
-  geom_smooth(method = "lm", size=1, colour="navy", alpha=0.4) +
+  geom_smooth(method = "lm", formula=y~x ,size=1, colour="navy", alpha=0.4) +
   theme_minimal() +
   theme(
     plot.title = element_text(hjust = 0.5),
