@@ -18,10 +18,13 @@ library(tidyverse)
 library(dplyr)
 library(maps)
 library(ggrepel)
-library(readxl)
 library(scales)
-library(shiny)
+library(renv)
+library(yaml)
+library(randomForest)
 ```
+
+
 
 
 #importing world data to draw out a map
@@ -43,7 +46,7 @@ temperature <- read_csv('data/temperature.csv', show_col_types=FALSE)
 temperature|>
   ggplot() +
   aes(x=Year, y=Value, colour=Area, group=Area ) +
-  geom_line() +
+  geom_line(size=0.75, alpha=0.75) +
   labs(y='Temperature Change in *C',
        title = "Temperature change across countries over the years" ) +
   theme_minimal() +
@@ -51,7 +54,8 @@ temperature|>
         legend.position = "none",
         panel.grid.minor = element_blank(),
         panel.grid.major.x = element_blank(),
-        axis.title.x = element_blank()) +
+        axis.title.x = element_blank(),
+        plot.margin = unit(c(0, 0.5, 0, 0.5), "inches")) +
   scale_x_continuous(breaks = seq(1960, 2020, by = 5), expand = c(0, NA))+
   scale_y_continuous(expand = c(0, 0))
 ```
@@ -88,22 +92,24 @@ inner_join(latest_temp_change, world, join_by(Country==region)) |>
   geom_polygon(aes(fill = temp_change)) +
   theme_minimal() +
   scale_fill_stepsn(breaks = seq(0.5, 3.5, by = 0.5),  
-                    limits = c(0, 4), 
+                    limits = c(0.5, 3.5), 
                     labels = seq(0.5, 3.5, by = 0.5),
-                    colors=c("lemonchiffon1", "yellow1","orange","darkorange1","orangered2", "firebrick3","red4"),
+                    colors=c("lemonchiffon1", "yellow1","orange2","orangered2","firebrick", "darkred","black"),
                     guide = guide_colorsteps(even.steps = FALSE)) + 
-  labs(title = "Global temperature change") +
+  labs(title = "Global temperature change in the last decade") +
   theme(axis.title=element_blank(), 
         axis.text = element_blank(),
         axis.ticks = element_blank(),
         legend.title = element_blank(),
         legend.position = "bottom",
+        legend.key.width = unit(1.5, 'cm'),
+        legend.key.height = unit(0.5, 'cm'),
         panel.grid = element_blank(),
         plot.title = element_text(hjust = 0.5)) +
   geom_text(data = highlight_labels, 
             aes(x = long, y = lat, label = Country),
             position = position_nudge(x=-0.5),
-            color = "gray21",
+            color = "gray11",
             size=4)
 
 #summarise by continent
@@ -229,9 +235,10 @@ ghg_types_long |>
   geom_line(data=forest_long, 
             aes(x=as.numeric(Year), y = Value),
             linewidth=1, colour="forestgreen", linetype="dashed") +
-  geom_text_repel(data=forest_long, aes(label = Series, y = Value), max.overlaps=2, 
-                  xlim = c(2010, 2015),
-                  segment.size = .7) +
+  geom_label_repel(data=forest_long, 
+            aes(y = Value, label="y"),
+                  nudge_x = 1,
+                  na.rm = TRUE) +
   labs(y = 'Greenhouse gas emissions (Bt)', 
        title = "Causes for Global Warming",
        caption = "*Greenhouse gas emissions (Billion Tonnes of CO2 equivalent)") +
@@ -244,6 +251,7 @@ ghg_types_long |>
     axis.title.x = element_blank(),
     panel.grid.minor = element_blank(),
     panel.grid.major.x = element_blank(),
+    plot.margin = unit(c(0, 0.5, 0, 0.5), "inches")
   ) +
   scale_x_continuous(breaks = seq(1990, 2020, by = 5), expand = c(0, NA)) +
   scale_y_continuous(breaks = seq(0, 50, by = 10), limits = c(-2, 50), expand = c(0, NA),
@@ -325,18 +333,21 @@ ghg_long |>
   theme(plot.title = element_text(hjust = 0.5),
         legend.position = "bottom",
         legend.title = element_blank(),
+        legend.text = element_text(size=8.25),
         axis.title.x = element_blank(),
         axis.title.y = element_blank(),
         panel.grid.minor = element_blank(),
         panel.grid.major.x = element_blank(),
+        plot.margin = unit(c(0, 0.5, 0, 0.5), "inches"),
         panel.spacing = unit(1, "lines")) +
   labs(title="Sector-wise: GHG Emission in Percentage")  +
   scale_x_continuous(breaks = seq(1990, 2020, by = 10), limits = c(1990,2020), expand = c(0, NA)) +
   scale_y_continuous(expand = c(0, NA)) +
   scale_color_manual(labels=c('Residential, commercial and public services', 'Others', 'Transport', 'Manufacturing Industries and Construction', 'Electricity and Heat production'),
-                     values=c("honeydew2","olivedrab2","olivedrab3", "darkolivegreen4", "darkslategrey"))+
+                     values=c("honeydew2","olivedrab2","olivedrab3", "darkolivegreen4", "darkslategrey")) +
   scale_fill_manual(labels=c('Residential, commercial & public services', 'Others', 'Transport', 'Manufacturing Industries & Construction', 'Electricity & Heat production'),
-                    values=c("honeydew2","olivedrab2","olivedrab3", "darkolivegreen4", "darkslategrey"))
+                    values=c("honeydew2","olivedrab2","olivedrab3", "darkolivegreen4", "darkslategrey")) +
+  guides(fill=guide_legend(nrow=2))
 ```
 
 #highlighted countries' details in how they are contributing to ghg emissions
@@ -348,7 +359,7 @@ ghg_long |>
   arrange(desc(total_ghg)) |>
   ggplot() +
   aes(y = reorder(Country, total_ghg), x = total_ghg, fill = factor(Series)) + 
-  geom_bar(stat = "identity", position = "stack", color = "white", width=0.75, alpha=0.75) +
+  geom_bar(stat = "identity", position = "stack", color = "white", width=0.75, alpha=0.75, linewidth=1) +
   theme_minimal() + 
   theme(
     plot.title = element_text(hjust = 0.5),
@@ -357,9 +368,12 @@ ghg_long |>
     axis.title.y = element_blank(),
     panel.grid.minor = element_blank(),
     panel.grid.major.y = element_blank(),
+    axis.text.y = element_text(size=11),
+    plot.margin = unit(c(0, 0.5, 0, 0.5), "inches")
   ) +
   labs(x='GHG Emission (billion tonnes)',
-    title = "Resources utilized in GHG Emissions"
+    title = "Resources utilized in GHG Emissions",
+    caption = "*GHG Emissions in the last decade"
   )  +
   scale_y_discrete(expand = c(0, NA)) +
   scale_x_continuous(expand = c(0, NA)) +
@@ -371,4 +385,6 @@ ghg_long |>
 ```
 
 
-
+```{r}
+renv::activate()
+```
