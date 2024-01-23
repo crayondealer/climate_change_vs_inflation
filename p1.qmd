@@ -390,7 +390,7 @@ ghg_long |>
 
 
 ```{r}
-global_temp_change <- temperature_new |>
+global_temp_change <- temperature |>
   filter(Area=="World")
 
 ghg_global_long <- ghg_long |>
