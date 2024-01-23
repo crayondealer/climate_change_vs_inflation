@@ -21,6 +21,7 @@ library(ggrepel)
 library(scales)
 library(renv)
 library(yaml)
+library(ggforce)
 library(randomForest)
 ```
 
@@ -44,6 +45,7 @@ temperature <- read_csv('data/temperature.csv', show_col_types=FALSE)
 #plot1: temperature change across countries - multilinear chart
 ```{r}
 temperature|>
+  filter(Area!="World") |>
   ggplot() +
   aes(x=Year, y=Value, colour=Area, group=Area ) +
   geom_line(size=0.75, alpha=0.75) +
@@ -427,5 +429,39 @@ ghg_long |>
 
 
 ```{r}
-renv::activate()
+global_temp_change <- temperature_new |>
+  filter(Area=="World")
+
+ghg_global_long <- ghg_long |>
+  filter(Series=="Total greenhouse gas emissions (kt of CO2 equivalent)" & Country=="World") 
+
+joined_dataset_byyear <- inner_join(global_temp_change, ghg_global_long, by = c("Year" = "Year")) |>
+  rename(temp_change = Value.x, ghg = Value.y) |>
+  drop_na(temp_change, ghg) |>
+  select(Year, temp_change, ghg)
+
+joined_dataset_byyear |>
+  ggplot() +
+  aes(x=ghg, y=temp_change) +
+  geom_point(alpha=0.6, size=3, colour="orangered2") +
+  geom_smooth(method = "lm", size=1, colour="navy", alpha=0.4) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.margin = unit(c(0.1, 0.5, 0.1, 0.5), "inches")
+  ) +
+  labs(title = "Greenhousegas Emissions and Temperature Change",
+       x="Greenhouse gas emissions (bt)",
+       y="Temperature Change (*C)",
+       caption="*The association is recorded over the years") +
+  scale_x_continuous(limits=c(29,50), expand = c(0, NA)) +
+  scale_y_continuous(limits=c(0,2), expand = c(0, NA)) 
+
+cor(joined_dataset_byyear$ghg, joined_dataset_byyear$temp_change)
+```
+
+
+
+```{r}
+#renv::activate()
 ```

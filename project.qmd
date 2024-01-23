@@ -23,7 +23,6 @@ library(maps)
 library(ggrepel)
 library(readxl)
 library(scales)
-library(shiny)
 ```
 
 #world map data 
@@ -39,6 +38,7 @@ inflation <- read_delim('kachra_data/world_bank_consumer_price_index.csv',
                         skip=3) |>
   select(`Country Name`, `Country Code`, starts_with('19')) 
 #266x42 records
+
 inflation <- inflation |>
   rowwise() |>
   mutate(count = sum(!is.na(c_across(starts_with("19"))))) |>
@@ -60,6 +60,26 @@ inflation |>
   theme(axis.title.y = element_blank())
 ```
 
+
+```{r}
+#for data cleaning
+anti_join(world, inflation, 
+          join_by(region==`Country Name`)) |>
+  select(region) |>
+  arrange(region) |>
+  unique()
+```
+
+```{r}
+#for data cleaning
+anti_join(inflation, world,
+          join_by(`Country Name`==region)) |>
+  select(`Country Name`) |>
+  arrange(`Country Name`) |>
+  unique() |>
+  print(n=36)
+```
+
 ```{r}
 inflation <- inflation |>
   mutate(`Country Name` = case_when(
@@ -79,23 +99,6 @@ inflation <- inflation |>
   ))
 ```
 
-```{r}
-#for data cleaning
-anti_join(world, inflation, 
-          join_by(region==`Country Name`)) |>
-  select(region) |>
-  arrange(region) |>
-  unique()
-```
-
-```{r}
-anti_join(inflation, world,
-          join_by(`Country Name`==region)) |>
-  select(`Country Name`) |>
-  arrange(`Country Name`) |>
-  unique() |>
-  print(n=36)
-```
 
 ```{r}
 inflation <- inner_join(inflation, world, join_by(`Country Name`==region))
@@ -140,7 +143,7 @@ inflation_long |>
 #temperature data cleaning and exploration
 
 ```{r}
-temperature <- read_csv('data/FAOSTAT_data.csv', show_col_types=FALSE) |>
+temperature <- read_csv('kachra_data/FAOSTAT_data_23.csv', show_col_types=FALSE) |>
   filter(Months=='Meteorological year') |>
   select(Area, Year, Unit, Value ) 
 #181 x 64
@@ -442,6 +445,7 @@ write.csv(temperature_new, 'data/temperature.csv', row.names = FALSE)
 #temperature change trend
 ```{r}
 temperature_new|>
+  filter(Area!="World") |>
   ggplot() +
   aes(x=Year, y=Value, colour=Area, group=Area ) +
   geom_line() +
@@ -457,7 +461,7 @@ temperature_new|>
 
 ```{r}
 latest_temp_change <- temperature_new |>
-  filter(Year>2010) |>
+  filter(Year>2010 & Area!="World") |>
   drop_na(Value, Year) |>
   group_by(Area) |>
   do(model = lm(Value ~ as.numeric(Year), data = .)) |>
@@ -520,7 +524,7 @@ latest_temp_change |>
 
 
 ```{r}
-co2_emission <- read_csv('data/CO2 emission by countries.csv', show_col_types=FALSE) 
+co2_emission <- read_csv('kachra_data/CO2 emission by countries.csv', show_col_types=FALSE) 
 ```
 
 
@@ -988,7 +992,7 @@ ghg_long |>
 ```{r}
 
 ghg_total_long <- ghg_long |>
-  filter(Series=="CO2 emissions (metric tons per capita)" & Country!="World" & Year>=2010) |>
+  filter(Series=="Total greenhouse gas emissions (kt of CO2 equivalent)" & Country!="World" & Year>=2010) |>
   group_by(Country, group) |>
   summarise(ghgpc = sum(Value))
 
@@ -1010,7 +1014,40 @@ joined_dataset |>
 ```{r}
 library(randomForest)
 cor(joined_dataset$ghgpc, joined_dataset$temp_change)
-#rf.fit <- randomForest(temp_change ~ ., data = joined_dataset, ntree = 1000,
-#                       keep.forest = FALSE, importance = TRUE)
-#summary(rf.fit)
+rf.fit <- randomForest(temp_change ~ ., data = joined_dataset, ntree = 1000,
+                       keep.forest = FALSE, importance = TRUE)
+summary(rf.fit)
+```
+
+```{r}
+global_temp_change <- temperature_new |>
+  filter(Area=="World")
+
+ghg_global_long <- ghg_long |>
+  filter(Series=="Total greenhouse gas emissions (kt of CO2 equivalent)" & Country=="World") |>
+  group_by(Year) |>
+  summarise(ghgpc = sum(Value))
+
+joined_dataset_byyear <- inner_join(global_temp_change, ghg_global_long, by = c("Year" = "Year")) |>
+  mutate(temp_change = as.numeric(Value),
+         ghgpc = 1*(ghgpc*10**6)) |>
+  drop_na(temp_change, ghgpc) 
+
+joined_dataset_byyear |>
+  ggplot() +
+  aes(x=ghgpc, y=temp_change) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.margin = unit(c(0.1, 0.5, 0.1, 0.5), "inches")
+  ) +
+  labs(title = "Greenhousegas Emissions and Temperature Change",
+       x="Greenhouse gas emissions (kt)",
+       y="Temperature Change (*C)") +
+  scale_x_continuous(expand = c(0, NA)) +
+  scale_y_continuous(expand = c(0, NA)) 
+
+cor(joined_dataset_byyear$ghgpc, joined_dataset_byyear$temp_change)
 ```
