@@ -266,45 +266,6 @@ ghg_types_long |>
 
 ```
 
-```{r}
-library(ggplot2)
-
-ghg_types_long |>
-  ggplot() +
-  aes(x = Year) +
-  geom_area(aes(y = Value, fill = factor(Series)), alpha = 0.7, linewidth = 1, colour = "white") +
-  labs(y = 'Greenhouse gas emissions (Bt)',
-       title = "Causes for Global Warming",
-       caption = "*Greenhouse gas emissions are in Billion Tonnes of CO2 equivalent") +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(hjust = 0.5),
-    plot.subtitle = element_text(size = 9),
-    legend.position = "bottom",
-    legend.title = element_blank(),
-    axis.title.x = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.grid.major.x = element_blank(),
-    plot.margin = unit(c(0.1, 0.5, 0.1, 0.5), "inches")
-  ) +
-  scale_x_continuous(breaks = seq(1990, 2020, by = 5), expand = c(0, NA)) +
-  scale_y_continuous(breaks = seq(0, 50, by = 10), limits = c(-2, 50), expand = c(0, NA),
-                     sec.axis = sec_axis(trans = ~ . * 1, name = "Forest Area (1000 square km)")) +
-  scale_color_manual(labels = c('CO2 emissions', 'Methane emissions', 'Nitrous oxide emissions', 'Other greenhouse gas emissions'),
-                     values = c("lightskyblue1", "steelblue3", "steelblue4", "black")) +
-  scale_fill_manual(labels = c('CO2 emissions', 'Methane emissions', 'Nitrous oxide emissions', 'Other greenhouse gas emissions'),
-                    values = c("lightskyblue1", "steelblue3", "steelblue4", "black")) +
-  guides(fill = guide_legend(nrow = 2)) +
-  geom_line(data = forest_long,
-            aes(x = as.numeric(Year), y = Value),
-            linewidth = 1, colour = "forestgreen", linetype = "dashed") +
-  geom_text(data = subset(forest_long, Year == max(Year)),
-            aes(label = "Forest Area", color = Series, x = Inf, y = Value),
-            vjust = 1.5, hjust = 1.1) +
-  scale_color_manual(labels = c("Forest Green"), values=c("forestgreen"), guide="none") 
-
-```
-
 
 #sketched country wise total ghg emissions. wanted to put label at the end of the line in line chart but it was messing up so resorted to put in legend
 ```{r}
