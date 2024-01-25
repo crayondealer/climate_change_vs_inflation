@@ -289,8 +289,8 @@ ghg_long |>
         legend.position = "right",
         panel.grid.minor = element_blank(),
         panel.grid.major.x = element_blank()) +
-  scale_color_manual(values=c("red3", "aquamarine3", "gold3", "mediumpurple3", "steelblue3", "darkorange3"))+
-  scale_fill_manual(values=c("red3", "aquamarine3", "gold3", "mediumpurple3", "steelblue3", "darkorange3"))
+  scale_color_manual(values=c("red3", "gold3", "aquamarine3", "mediumpurple3", "steelblue3", "darkorange3"))+
+  scale_fill_manual(values=c("red3", "gold3", "aquamarine3", "mediumpurple3", "steelblue3", "darkorange3"))
 
 ```
 
