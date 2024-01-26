@@ -13,12 +13,12 @@ format:
 editor: visual
 ---
 
-# Data
+## Data
 
 ::: columns
 ::: {.column width="60%"}
 ::: {.callout-important appearance="minimal"}
-**Dataset 1:**  Temperature Change across countries
+**Dataset 1:**  Temperature Change across countries from 1961-2020
 
 **Source:** FAOSTAT via Kaggle 
 
@@ -30,7 +30,7 @@ editor: visual
 ::: columns
 ::: {.column width="60%"}
 ::: {.callout-important appearance="minimal"}
-**Dataset 2:** Greenhouse Gas Emissions + Forest Area
+**Dataset 2:** Greenhouse Gas Emissions & Forest Area from 1990-2020
 
 **Source:** World Bank
 
@@ -45,7 +45,7 @@ editor: visual
 
 . . .
 
-# Objective
+## Objective
 
 \
 \
@@ -53,23 +53,19 @@ This presentation aims to find the causes of global temperature change.
 
 . . .
 
-# Visualisations
-
-. . .
-
-# Global Trend on Temperature Change
+## Global Trend on Temperature Change
 
 ![](img/img1.png){fig-align="center"}
 
 . . .
 
-# Temperature Change across the globe
+## Temperature Change across the globe
 
 ![](img/img2.png){fig-align="center"}
 
 . . .
 
-# Factors leading to climate change
+## Factors leading to climate change
 
 Two main leading factors of global warming are Deforestation and Greenhouse gas(GHG) emissions
 
@@ -77,20 +73,19 @@ Two main leading factors of global warming are Deforestation and Greenhouse gas(
 
 . . .
 
-# GHG emissions across countries
+## GHG emissions across countries
 
 ![](img/img4.png){fig-align="left" width="800"}![](img/img5.png){fig-align="right" width="800"}
 
-
 . . .
 
-# Major sectors emitting GHG 
+## Major sectors emitting CO2
 
 ![](img/img7.png){fig-align="center"}
 
 . . .
 
-# Contributing factors to GHG emissions
+## Contributing factors to CO2 emissions
 
 ![](img/img6.png){fig-align="center"}
 
